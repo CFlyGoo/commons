@@ -16,6 +16,7 @@
 
 package com.apehat.graph;
 
+import com.apehat.table.ArrayTable;
 import com.apehat.util.MatrixUtils;
 
 import java.util.*;
@@ -28,11 +29,8 @@ public class ArrayDigraph<E> implements Digraph<E> {
   
   private final List<E> vertices;
   private final Indicator<? super E> indicator;
-  
-  private transient byte[][] adjacencyMatrix;
-  private transient byte[][] reachableMatrix;
-  private transient Integer[][] reachableSet;
-  private transient Integer[][] firstSet;
+  private transient ArrayTable<Integer> adjacencyTable;
+  private transient ArrayTable<Integer> reachableTable;
   
   public ArrayDigraph(Set<E> vertices, Indicator<? super E> indicator) {
     if (vertices == null || vertices.size() == 0) {
@@ -44,38 +42,32 @@ public class ArrayDigraph<E> implements Digraph<E> {
   
   @Override
   public Set<E> getAdjacentFirstVertices(E node) {
-    byte[][] adjacencyMatrix = getAdjacencyMatrix();
-    final Set<E> vertices = new HashSet<>();
-    final int idx = this.vertices.indexOf(node);
-    for (int i = 0; i < adjacencyMatrix.length; i++) {
-      if (adjacencyMatrix[i][idx] == 1) {
-        vertices.add(this.vertices.get(i));
-      }
-    }
-    return vertices;
+    return this.nonZeroElements(this.getAdjacencyTable().itemsOfColumn(this.vertices.indexOf(node)));
   }
   
   @Override
   public Set<E> getAdjacentReachableVertices(E vertex) {
-    byte[][] adjacencyMatrix = getAdjacencyMatrix();
-    final byte[] adjacencyList = adjacencyMatrix[this.vertices.indexOf(vertex)];
-    final Set<E> vertices = new HashSet<>();
-    for (int i = 0; i < adjacencyList.length; i++) {
-      if (adjacencyList[i] == 1) {
-        vertices.add(this.vertices.get(i));
-      }
-    }
-    return vertices;
+    return this.nonZeroElements(this.getAdjacencyTable().itemsOfRow(this.vertices.indexOf(vertex)));
   }
   
   @Override
   public Set<E> getReachableVertices(E item) {
-    return indexOf(getReachableSet(this.vertices.indexOf(item)));
+    return this.nonZeroElements(this.getReachableTable().itemsOfRow(this.vertices.indexOf(item)));
   }
   
   @Override
   public Set<E> getFirstVertices(E item) {
-    return indexOf(getFirstSet(this.vertices.indexOf(item)));
+    return this.nonZeroElements(this.getReachableTable().itemsOfColumn(this.vertices.indexOf(item)));
+  }
+  
+  private Set<E> nonZeroElements(List<Integer> list) {
+    final Set<E> items = new HashSet<>();
+    for (int i = 0, len = list.size(); i < len; i++) {
+      if (list.get(i) > 0) {
+        items.add(this.vertices.get(i));
+      }
+    }
+    return items;
   }
   
   @Override
@@ -88,88 +80,28 @@ public class ArrayDigraph<E> implements Digraph<E> {
     return new HashSet<>(vertices);
   }
   
-  private byte[][] getReachableMatrix() {
-    if (this.reachableMatrix == null) {
-      final byte[][] adjacencyMatrix = getAdjacencyMatrix();
-      final byte[][] reachableMatrix = MatrixUtils.mul(adjacencyMatrix, adjacencyMatrix);
-      for (int i = 0; i < reachableMatrix.length; i++) {
-        for (int j = 0; j < reachableMatrix.length; j++) {
-          if (reachableMatrix[i][j] > 0) {
-            reachableMatrix[i][j] = 1;
-          }
-        }
-      }
-      this.reachableMatrix = reachableMatrix;
+  private ArrayTable<Integer> getReachableTable() {
+    if (this.reachableTable == null) {
+      final ArrayTable<Integer> table = getAdjacencyTable();
+      final Integer[][] array = table.toArray(new Integer[table.row()][table.column()]);
+      this.reachableTable = new ArrayTable<>(MatrixUtils.mul(array, array));
     }
-    return this.reachableMatrix;
+    return reachableTable;
   }
   
-  private byte[][] getAdjacencyMatrix() {
-    if (adjacencyMatrix == null) {
-      final int length = this.vertices.size();
-      final byte[][] matrix = new byte[length][length];
-      for (int from = 0; from < length; from++) {
-        for (int to = 0; to < length; to++) {
+  private ArrayTable<Integer> getAdjacencyTable() {
+    if (this.adjacencyTable == null) {
+      final ArrayTable<Integer> table = new ArrayTable<>(this.vertices.size());
+      table.fill(0);
+      for (E from : vertices) {
+        for (E to : vertices) {
           if (isDirected(from, to)) {
-            matrix[from][to] = 1;
+            table.set(vertices.indexOf(from), vertices.indexOf(to), 1);
           }
         }
       }
-      this.adjacencyMatrix = matrix;
+      this.adjacencyTable = table;
     }
-    return adjacencyMatrix;
-  }
-  
-  private Integer[] getFirstSet(int idx) {
-    if (idx == -1) {
-      throw new IllegalArgumentException("Non item in " + -1);
-    }
-    if (this.firstSet == null) {
-      this.firstSet = new Integer[this.vertices.size()][];
-    }
-    if (this.firstSet[idx] == null) {
-      final int length = this.vertices.size();
-      final ArrayList<Integer> firstSet = new ArrayList<>(length);
-      for (int i = 0; i < length; i++) {
-        if (getReachableMatrix()[i][idx] == 1) {
-          firstSet.add(i);
-        }
-      }
-      this.firstSet[idx] = firstSet.toArray(new Integer[0]);
-    }
-    return this.firstSet[idx];
-  }
-  
-  private Integer[] getReachableSet(int idx) {
-    if (idx == -1) {
-      throw new IllegalArgumentException("Non item in " + -1);
-    }
-    if (this.reachableSet == null) {
-      this.reachableSet = new Integer[this.vertices.size()][];
-    }
-    if (this.reachableSet[idx] == null) {
-      final int length = this.vertices.size();
-      ArrayList<Integer> reachableSet = new ArrayList<>(length);
-      for (int j = 0; j < length; j++) {
-        if (this.getReachableMatrix()[idx][j] == 1) {
-          reachableSet.add(j);
-        }
-      }
-      this.reachableSet[idx] = reachableSet.toArray(new Integer[0]);
-    }
-    return this.reachableSet[idx];
-  }
-  
-  private Set<E> indexOf(Integer[] idxs) {
-    final HashSet<E> result = new HashSet<>();
-    for (Integer idx : idxs) {
-      result.add(this.vertices.get(idx));
-    }
-    return result;
-  }
-  
-  private boolean isDirected(int from, int to) {
-    return vertices.get(from).equals(vertices.get(to)) ||
-            indicator.isDirection(vertices.get(from), vertices.get(to));
+    return adjacencyTable;
   }
 }
