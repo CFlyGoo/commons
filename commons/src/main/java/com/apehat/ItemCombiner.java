@@ -17,7 +17,7 @@
 package com.apehat;
 
 import com.apehat.graph.Digraph;
-import com.apehat.layer.DigraphLayerAnalyzer;
+import com.apehat.graph.GraphUtils;
 import com.apehat.layer.Layer;
 
 import java.util.HashSet;
@@ -59,6 +59,6 @@ public class ItemCombiner<T> {
   }
   
   protected Layer<Item<T>> layer(Digraph<Item<T>> graph) {
-    return new DigraphLayerAnalyzer<>(graph).calculateLayer();
+    return GraphUtils.topologicalSort(graph);
   }
 }
