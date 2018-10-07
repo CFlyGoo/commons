@@ -22,7 +22,7 @@ import java.util.Set;
  * @author hanpengfei
  * @since 1.0
  */
-public interface Digraph<E> {
+public interface Digraph<E> extends Graph<E> {
   
   Set<E> getAdjacentFirstVertices(E node);
   
@@ -32,9 +32,14 @@ public interface Digraph<E> {
   
   Set<E> getFirstVertices(E item);
   
-  Set<E> vertices();
-  
   boolean isDirected(E head, E tail);
+  
+  @Override
+  default Set<E> adjacentVertices(E node) {
+    Set<E> vertices = getAdjacentFirstVertices(node);
+    vertices.addAll(getAdjacentReachableVertices(node));
+    return vertices;
+  }
   
   default boolean isReachable(E from, E to) {
     return getReachableVertices(from).contains(to);
