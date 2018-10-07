@@ -16,6 +16,8 @@
 
 package com.apehat.util;
 
+import com.apehat.table.ArrayTable;
+
 /**
  * @author hanpengfei
  * @since 1.0
@@ -38,5 +40,21 @@ public final class MatrixUtils {
       }
     }
     return result;
+  }
+  
+  public static Integer[][] mul(Integer[][] a, Integer[][] b) {
+    assert a[0].length == b.length;
+    final int rowCount = a.length;
+    final int columnCount = b[0].length;
+    ArrayTable<Integer> table = new ArrayTable<>(rowCount, columnCount);
+    table.fill(0);
+    for (int r = 0; r < rowCount; r++) {
+      for (int c = 0; c < columnCount; c++) {
+        for (int k = 0; k < b.length; k++) {
+          table.set(r, c, table.get(r, c) + a[r][k] * b[k][c]);
+        }
+      }
+    }
+    return table.toArray(new Integer[rowCount][columnCount]);
   }
 }
