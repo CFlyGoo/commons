@@ -7,7 +7,7 @@
     <groupId>com.apehat</groupId>
     <artifactId>commons-build</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.3-SNAPSHOT</version>
     <name>commons-build</name>
     <url>https://www.github.com/CFlyGoo/commons</url>
 
